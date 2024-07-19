@@ -21,14 +21,50 @@ const openInDiffEditor = (leftFilePath: string, rightFilePath: string, title: st
 };
 
 
-function clone_repos(lp_username: string, mp: MergeProposal): void {
-	cp.exec('git clone', (err: string, stdout: string, stderr: string) => {
+async function clone_repos(lp_username: string, mp: MergeProposal): Promise<string[]> {
+	cp.exec("mkdir -p tmp/source", (err: Error, stdout: string, stderr: string) => {
+		console.log(err);
+		console.log(stdout);
+		console.log(stderr);
+	});
+	cp.exec("mkdir -p tmp/target", (err: Error, stdout: string, stderr: string) => {
+		console.log(err);
+		console.log(stdout);
+		console.log(stderr);
+	});
+	cp.exec("git clone --depth 1 -b " + mp.source_branch + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.source_repo + " tmp/source", (err: Error, stdout: string, stderr: string) => {
 		console.log('stdout: ' + stdout);
 		console.log('stderr: ' + stderr);
 		if (err) {
 			console.log('error: ' + err);
 		}
 	});
+	// get the upstream and diff
+	cp.exec("cd tmp/source/ && git add remote upstream git+ssh://" + lp_username + "@git.launchpad.net/" + mp.target_repo + " && git remote update upstream", (err: Error, stdout: string, stderr: string) => {
+		console.log('stdout: ' + stdout);
+		console.log('stderr: ' + stderr);
+		if (err) {
+			console.log('error: ' + err);
+		}
+	});
+	cp.exec("git clone --depth 1 -b " + mp.target_branch + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.target_repo + " tmp/source", (err: Error, stdout: string, stderr: string) => {
+		console.log('stdout: ' + stdout);
+		console.log('stderr: ' + stderr);
+		if (err) {
+			console.log('error: ' + err);
+		}
+	});
+	return new Promise<string[]>(function (resolve, reject) {
+		cp.exec("cd tmp/source && git diff upstream/" + mp.target_branch + " --name-only", (err: Error, stdout: string, stderr: string) => {
+			if (err) {
+				console.log('error: ' + err);
+				reject("Failed to get list of files changed")
+			}
+			else {
+				resolve(stdout.split("\n"))
+			}
+		});
+	})
 }
 
 
@@ -59,6 +95,7 @@ const diff_lp = async (): Promise<void> => {
 	var mp: MergeProposal;
 	mp = await get_repository_urls(lp_url);
 	console.log(mp)
+	var files_changed: string[] = await clone_repos(lp_username, mp);
 
 	openInDiffEditor("/home/wyatt/lp-diff-viewer/test1.txt", "/home/wyatt/lp-diff-viewer/test2.txt", "Test diff");
 }
