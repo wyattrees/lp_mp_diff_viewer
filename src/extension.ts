@@ -38,16 +38,16 @@ function get_diff(lp_username: string, mp: MergeProposal): string[] {
 	var files: string[] = paths.filter((path: string) => !(fs.lstatSync(path).isDirectory()));
 	console.log(files);
 	cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " > diff.patch");
-	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch)
 	return files;
 }
 
 
 
-function make_tmp_files_and_patch(files: string[]): void {
+function make_tmp_files_and_patch(files: string[], mp: MergeProposal): void {
 	files.forEach(f => {
 		cp.execSync("cp " + f + " " + f + ".orig");
 	});
+	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch)
 	cp.execSync("git apply diff.patch");
 }
 
@@ -95,7 +95,7 @@ const diff_lp = async (): Promise<void> => {
 	try {
 		files_changed = get_diff(lp_username, mp);
 		console.log(files_changed)
-		make_tmp_files_and_patch(files_changed);
+		make_tmp_files_and_patch(files_changed, mp);
 		openInDiffEditor(files_changed[0], files_changed[0] + ".orig", "test");
 	}
 	finally {
