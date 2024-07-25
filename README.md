@@ -6,6 +6,12 @@ With your VS Code editor open to the corresponding repository of the merge propo
 
 Then, enter your launchpad username and the url of the Merge Proposal you would like to view.
 
+## Build & Install
+
+To build the extension, run `vsce package` in the root of this repository. This will create a `.vsix` file.
+
+To install the extension, run `code --install-extension $PATH_TO_VSIX_FILE`.
+
 ## Features
 
 Files will be diffed one-by-one. When the diff tab is closed, the next one will open.
