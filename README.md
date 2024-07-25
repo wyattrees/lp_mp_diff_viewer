@@ -13,7 +13,7 @@ Files will be diffed one-by-one. When the diff tab is closed, the next one will 
 ## Known Issues
 
 - Make sure your repository working tree is clean before running the `LP Diff` command.
-- If a file is added or renamed in the merge proposal, it may not display in the diff.
+- All editor tabs must be closed before running the `LP Diff` command.
 
 ## Release Notes
 
