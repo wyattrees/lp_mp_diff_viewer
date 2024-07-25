@@ -29,14 +29,16 @@ function get_diff(lp_username: string, mp: MergeProposal): string[] {
 	cp.execSync("git remote add " + TARGET_REMOTE + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.target_repo + " && git remote update " + TARGET_REMOTE);
 	cp.execSync("git remote add " + SOURCE_REMOTE + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.source_repo + " && git remote update " + SOURCE_REMOTE);
 	cp.execSync("git checkout " + SOURCE_REMOTE + "/" + mp.source_branch);
-	var paths = cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " --name-only").toString().split("\n").filter((path: string) => path != "");
+	var paths = cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " --name-only").toString().split("\n");
+	console.log("Before filter");
 	console.log(paths)
-	console.log(cp.execSync("git status").toString());
-	console.log(cp.execSync("git remote -v").toString());
-	cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " > diff.patch");
-	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch)
+	paths = paths.filter((path: string) => path != "")
+	console.log("After filter");
+	console.log(paths)
 	var files: string[] = paths.filter((path: string) => !(fs.lstatSync(path).isDirectory()));
 	console.log(files);
+	cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " > diff.patch");
+	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch)
 	return files;
 }
 
