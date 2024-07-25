@@ -1,26 +1,28 @@
 # LP Diff
 
-This VS Code extension enables you to view a side-by-side diff of files changed in a Launchpad merge proposal
+This VS Code extension enables you to view a side-by-side diff of files changed in a Launchpad merge proposal.
+
+With your VS Code editor open to the corresponding repository of the merge proposal, enter the `LP Diff` command by pressing `Ctrl+Shift+P` and typing "LP Diff"
+
+Then, enter your launchpad username and the url of the Merge Proposal you would like to view.
+
+## Build & Install
+
+To build the extension, run `vsce package` in the root of this repository. This will create a `.vsix` file.
+
+To install the extension, run `code --install-extension $PATH_TO_VSIX_FILE`.
 
 ## Features
 
-## Extension Settings
-<!-- 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something. -->
+Files will be diffed one-by-one. When the diff tab is closed, the next one will open.
 
 ## Known Issues
 
+- Make sure your repository working tree is clean before running the `LP Diff` command.
+- All editor tabs must be closed before running the `LP Diff` command.
+
 ## Release Notes
 
-### 1.0.0
+### 0.0.1
 
----
-
-**Enjoy!**
+Initial release, probably buggy.

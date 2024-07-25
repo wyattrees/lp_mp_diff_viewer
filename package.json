@@ -10,6 +10,10 @@
   "categories": [
     "Other"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wyattrees/lp_mp_diff_viewer.git"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
