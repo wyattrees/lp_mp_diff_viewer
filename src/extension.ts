@@ -99,7 +99,8 @@ const diff_lp = async (): Promise<void> => {
 		openInDiffEditor(files_changed[0], files_changed[0] + ".orig", "test");
 	}
 	finally {
-		cleanup(lp_username, mp, files_changed);
+		console.log("Done");
+		// cleanup(lp_username, mp, files_changed);
 	}
 }
 // This method is called when your extension is activated
