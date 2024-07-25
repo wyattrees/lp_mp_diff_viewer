@@ -18,9 +18,14 @@ type MergeProposal = {
 	target_repo: string;
 }
 
+function get_cwd(): string {
+	return cp.execSync("pwd").toString()
+}
+
 const openInDiffEditor = (leftFilePath: string, rightFilePath: string, title: string) => {
-	const leftUri = vscode.Uri.file(leftFilePath);
-	const rightUri = vscode.Uri.file(rightFilePath);
+	const wd = get_cwd();
+	const leftUri = vscode.Uri.file(wd + "/" + leftFilePath);
+	const rightUri = vscode.Uri.file(wd + "/" + rightFilePath);
 	vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
 };
 
