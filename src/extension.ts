@@ -23,7 +23,7 @@ function get_cwd(): string {
 	return cp.execSync("pwd").toString()
 }
 
-const openInDiffEditor = (leftFilePath: string, rightFilePath: string, title: string) => {
+async function openInDiffEditor(leftFilePath: string, rightFilePath: string, title: string): Promise<void> {
 	var wd: string = "";
 	if (vscode.workspace.workspaceFolders != undefined) {
 		wd = vscode.workspace.workspaceFolders[0].uri.fsPath;
@@ -38,7 +38,11 @@ const openInDiffEditor = (leftFilePath: string, rightFilePath: string, title: st
 	var right: string = path.join(wd, rightFilePath);
 	const leftUri = vscode.Uri.file(left);
 	const rightUri = vscode.Uri.file(right);
-	vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+	return new Promise<void>(function (resolve, reject) {
+		vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title).then((res) => {
+			resolve();
+		})
+	});
 };
 
 
@@ -58,23 +62,35 @@ function get_diff(lp_username: string, mp: MergeProposal): string[] {
 	return files;
 }
 
-
+function insert_orig(fp: string): string {
+	var filename: string = "orig_" + path.basename(fp);
+	var dir: string = path.dirname(fp);
+	return path.join(dir, filename);
+}
 
 function make_tmp_files_and_patch(files: string[], mp: MergeProposal): void {
+	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch);
 	files.forEach(f => {
-		cp.execSync("cp " + f + " " + f + ".orig");
+		// check if this a new file being added
+		if (fs.existsSync(f)) {
+			cp.execSync("cp " + f + " " + insert_orig(f));
+		}
+		else {
+			// make an empty file
+			cp.execSync("touch " + insert_orig(f));
+		}
 	});
-	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch)
 	cp.execSync("git apply diff.patch");
 }
 
 function cleanup(lp_username: string, mp: MergeProposal, files: string[]): void {
 	try {
-		// files.forEach(f => {
-		// 	cp.execSync("rm " + f + ".orig")
-		// })
 		cp.execSync("git remote remove " + SOURCE_REMOTE);
 		cp.execSync("git remote remove " + TARGET_REMOTE);
+		cp.execSync("rm diff.patch");
+		files.forEach(f => {
+			cp.execSync("rm " + insert_orig(f))
+		})
 	}
 	catch {
 		console.log("Failed to cleanup");
@@ -99,6 +115,12 @@ async function get_repository_urls(lp_mp_url: string): Promise<MergeProposal> {
 
 }
 
+function sleep(ms: number) {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
 const diff_lp = async (): Promise<void> => {
 	const lp_username = await vscode.window.showInputBox({ placeHolder: "Enter your Launchpad username" })
 	const lp_url = await vscode.window.showInputBox({ placeHolder: "URL for LP Merge Proposal" });
@@ -113,11 +135,20 @@ const diff_lp = async (): Promise<void> => {
 		files_changed = get_diff(lp_username, mp);
 		console.log(files_changed)
 		make_tmp_files_and_patch(files_changed, mp);
-		openInDiffEditor(files_changed[0], files_changed[0] + ".orig", "test");
+		var closed = false;
+
+		for (const f of files_changed) {
+			await openInDiffEditor(insert_orig(f), f, path.basename(f));
+
+			await sleep(200);
+			while (vscode.window.tabGroups.activeTabGroup.tabs.length != 0) {
+				await sleep(100);
+			}
+		}
 	}
 	finally {
 		console.log("Done");
-		// cleanup(lp_username, mp, files_changed);
+		cleanup(lp_username, mp, files_changed);
 	}
 }
 // This method is called when your extension is activated
