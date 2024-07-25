@@ -1,8 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import path from 'path';
 import * as vscode from 'vscode';
 const cp = require("child_process");
-
+const fs = require("fs");
 const got = require('got');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
@@ -28,10 +29,17 @@ function get_diff(lp_username: string, mp: MergeProposal): string[] {
 	cp.execSync("git remote add " + TARGET_REMOTE + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.target_repo + " && git remote update " + TARGET_REMOTE);
 	cp.execSync("git remote add " + SOURCE_REMOTE + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.source_repo + " && git remote update " + SOURCE_REMOTE);
 	cp.execSync("git checkout " + SOURCE_REMOTE + "/" + mp.source_branch);
-	var files: string = cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " --name-only")
+	var paths = cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " --name-only").toString().split("\n").filter((path: string) => path != "");
+	console.log(paths)
+	console.log(cp.execSync("git status").toString());
+	console.log(cp.execSync("git remote -v").toString());
 	cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " > diff.patch");
-	return files.split("\n");
+	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch)
+	var files: string[] = paths.filter((path: string) => !(fs.lstatSync(path).isDirectory()));
+	console.log(files);
+	return files;
 }
+
 
 
 function make_tmp_files_and_patch(files: string[]): void {
@@ -42,10 +50,16 @@ function make_tmp_files_and_patch(files: string[]): void {
 }
 
 function cleanup(lp_username: string, mp: MergeProposal, files: string[]): void {
-	files.forEach(f => {
-		cp.execSync("rm " + f + ".orig")
-	})
-
+	try {
+		files.forEach(f => {
+			cp.execSync("rm " + f + ".orig")
+		})
+		cp.execSync("git remote remove " + SOURCE_REMOTE);
+		cp.execSync("git remote remove " + TARGET_REMOTE);
+	}
+	catch {
+		console.log("Failed to cleanup");
+	}
 }
 
 async function get_repository_urls(lp_mp_url: string): Promise<MergeProposal> {
@@ -75,11 +89,16 @@ const diff_lp = async (): Promise<void> => {
 	var mp: MergeProposal;
 	mp = await get_repository_urls(lp_url);
 	console.log(mp)
-	var files_changed: string[] = get_diff(lp_username, mp);
-	console.log(files_changed)
-	make_tmp_files_and_patch(files_changed);
-	openInDiffEditor(files_changed[0], files_changed[0] + ".orig", "test");
-	// cleanup(lp_username, mp, files_changed);
+	var files_changed: string[] = [];
+	try {
+		files_changed = get_diff(lp_username, mp);
+		console.log(files_changed)
+		make_tmp_files_and_patch(files_changed);
+		openInDiffEditor(files_changed[0], files_changed[0] + ".orig", "test");
+	}
+	finally {
+		cleanup(lp_username, mp, files_changed);
+	}
 }
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
