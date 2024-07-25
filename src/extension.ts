@@ -1,5 +1,4 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+// VS Code extension for viewing the diff of a Launchpad Merge Proposal
 import { error } from 'console';
 import * as vscode from 'vscode';
 const cp = require("child_process");
@@ -19,16 +18,14 @@ type MergeProposal = {
 	target_repo: string;
 }
 
-function get_cwd(): string {
-	return cp.execSync("pwd").toString()
-}
 
-async function openInDiffEditor(leftFilePath: string, rightFilePath: string, title: string): Promise<void> {
+async function openInDiffEditor(leftFilePath: string, rightFilePath: string, title: string): Promise<void>
+/*
+Open the two files in a diff editor.
+*/ {
 	var wd: string = "";
 	if (vscode.workspace.workspaceFolders != undefined) {
 		wd = vscode.workspace.workspaceFolders[0].uri.fsPath;
-		console.log("WD:");
-		console.log(wd);
 	}
 	else {
 		error("No workspace is open");
@@ -46,29 +43,41 @@ async function openInDiffEditor(leftFilePath: string, rightFilePath: string, tit
 };
 
 
-function get_diff(lp_username: string, mp: MergeProposal): string[] {
+function get_diff(lp_username: string, mp: MergeProposal): string[]
+/*
+Get a list of files changed in the merge proposal, and generate a patch to apply later
+*/ {
+	// add the relevant branches
 	cp.execSync("git remote add " + TARGET_REMOTE + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.target_repo + " && git remote update " + TARGET_REMOTE);
 	cp.execSync("git remote add " + SOURCE_REMOTE + " git+ssh://" + lp_username + "@git.launchpad.net/" + mp.source_repo + " && git remote update " + SOURCE_REMOTE);
 	cp.execSync("git checkout " + SOURCE_REMOTE + "/" + mp.source_branch);
+
+	// retrieve a list of files that changed
 	var paths = cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " --name-only").toString().split("\n");
-	console.log("Before filter");
-	console.log(paths)
 	paths = paths.filter((path: string) => path != "")
-	console.log("After filter");
-	console.log(paths)
+
+	// boo submodules
 	var files: string[] = paths.filter((path: string) => !(fs.lstatSync(path).isDirectory()));
-	console.log(files);
+
+	// generate a patch to use later
 	cp.execSync("git diff " + TARGET_REMOTE + "/" + mp.target_branch + " > diff.patch");
 	return files;
 }
 
-function insert_orig(fp: string): string {
+
+function insert_orig(fp: string): string
+/*
+Prepend "orig_" to the filename
+*/ {
 	var filename: string = "orig_" + path.basename(fp);
 	var dir: string = path.dirname(fp);
 	return path.join(dir, filename);
 }
 
-function make_tmp_files_and_patch(files: string[], mp: MergeProposal): void {
+function make_tmp_files_and_patch(files: string[], mp: MergeProposal): void
+/*
+Make temporary files for the diff. Apply the patch.
+*/ {
 	cp.execSync("git checkout " + TARGET_REMOTE + "/" + mp.target_branch);
 	files.forEach(f => {
 		// check if this a new file being added
@@ -83,7 +92,10 @@ function make_tmp_files_and_patch(files: string[], mp: MergeProposal): void {
 	cp.execSync("git apply diff.patch");
 }
 
-function cleanup(lp_username: string, mp: MergeProposal, files: string[]): void {
+function cleanup(lp_username: string, mp: MergeProposal, files: string[]): void
+/*
+Get rid of files, remotes, etc that were used.
+*/ {
 	try {
 		cp.execSync("git remote remove " + SOURCE_REMOTE);
 		cp.execSync("git remote remove " + TARGET_REMOTE);
@@ -97,7 +109,10 @@ function cleanup(lp_username: string, mp: MergeProposal, files: string[]): void 
 	}
 }
 
-async function get_repository_urls(lp_mp_url: string): Promise<MergeProposal> {
+async function get_repository_urls(lp_mp_url: string): Promise<MergeProposal>
+/*
+Parse the MP webpage for the repositories and branches
+*/ {
 	return new Promise<MergeProposal>(function (resolve, reject) {
 		got(lp_mp_url).then((response: any) => {
 			var mp: MergeProposal;
@@ -122,6 +137,7 @@ function sleep(ms: number) {
 }
 
 const diff_lp = async (): Promise<void> => {
+	// TODO: should probably just parse this from "git remote"
 	const lp_username = await vscode.window.showInputBox({ placeHolder: "Enter your Launchpad username" })
 	const lp_url = await vscode.window.showInputBox({ placeHolder: "URL for LP Merge Proposal" });
 	if (lp_username == undefined || lp_url == undefined) {
@@ -129,13 +145,10 @@ const diff_lp = async (): Promise<void> => {
 	}
 	var mp: MergeProposal;
 	mp = await get_repository_urls(lp_url);
-	console.log(mp)
 	var files_changed: string[] = [];
 	try {
 		files_changed = get_diff(lp_username, mp);
-		console.log(files_changed)
 		make_tmp_files_and_patch(files_changed, mp);
-		var closed = false;
 
 		for (const f of files_changed) {
 			await openInDiffEditor(insert_orig(f), f, path.basename(f));
@@ -151,21 +164,11 @@ const diff_lp = async (): Promise<void> => {
 		cleanup(lp_username, mp, files_changed);
 	}
 }
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+
 export function activate(context: vscode.ExtensionContext) {
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "lp-diff" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
 	const disposable = vscode.commands.registerCommand('lp-diff.lpDiff', diff_lp);
 
 	context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() { }
