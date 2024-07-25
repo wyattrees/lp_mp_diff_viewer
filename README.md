@@ -20,6 +20,15 @@ Files will be diffed one-by-one. When the diff tab is closed, the next one will 
 
 - Make sure your repository working tree is clean before running the `LP Diff` command.
 - All editor tabs must be closed before running the `LP Diff` command.
+- Cleanup does not happen properly. Your git repository will be in a weird configuration. To clean it:
+
+```bash
+git checkout master # or main
+git reset HEAD --hard
+# maybe remove any extra files lying around
+git remote remove lp-diff-target
+git remote remove lp-diff-src
+```
 
 ## Release Notes
 
