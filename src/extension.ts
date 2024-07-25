@@ -1,12 +1,13 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import path from 'path';
+import { error } from 'console';
 import * as vscode from 'vscode';
 const cp = require("child_process");
 const fs = require("fs");
 const got = require('got');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
+const path = require("path");
 
 const TARGET_REMOTE = "lp-diff-target"
 const SOURCE_REMOTE = "lp-diff-src"
@@ -23,9 +24,20 @@ function get_cwd(): string {
 }
 
 const openInDiffEditor = (leftFilePath: string, rightFilePath: string, title: string) => {
-	const wd = get_cwd();
-	const leftUri = vscode.Uri.file(wd + "/" + leftFilePath);
-	const rightUri = vscode.Uri.file(wd + "/" + rightFilePath);
+	var wd: string = "";
+	if (vscode.workspace.workspaceFolders != undefined) {
+		wd = vscode.workspace.workspaceFolders[0].uri.fsPath;
+		console.log("WD:");
+		console.log(wd);
+	}
+	else {
+		error("No workspace is open");
+		return;
+	}
+	var left: string = path.join(wd, leftFilePath);
+	var right: string = path.join(wd, rightFilePath);
+	const leftUri = vscode.Uri.file(left);
+	const rightUri = vscode.Uri.file(right);
 	vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
 };
 
@@ -58,9 +70,9 @@ function make_tmp_files_and_patch(files: string[], mp: MergeProposal): void {
 
 function cleanup(lp_username: string, mp: MergeProposal, files: string[]): void {
 	try {
-		files.forEach(f => {
-			cp.execSync("rm " + f + ".orig")
-		})
+		// files.forEach(f => {
+		// 	cp.execSync("rm " + f + ".orig")
+		// })
 		cp.execSync("git remote remove " + SOURCE_REMOTE);
 		cp.execSync("git remote remove " + TARGET_REMOTE);
 	}
